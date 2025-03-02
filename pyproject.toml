@@ -10,9 +10,9 @@ readme = "README.md"
 python = "^3.12"
 
 
+[tool.poetry.group.test.dependencies]
+pytest = "^8.3.4"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
-
-[virtualenv]
-in-project = true
