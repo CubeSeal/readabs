@@ -2,7 +2,7 @@ import requests as req
 
 from readabs import connection as con
 
-abs_url = "https://data.api.abs.gov.au/rest/"
+abs_url = "https://ausstats.abs.gov.au/servlet/TSSearchServlet?"
 
 def test_get_data():
     response: req.models.Response = con._get_data(abs_url)
@@ -17,4 +17,4 @@ def test_get_data_type():
 def test_abs_conn_status():
     response: req.models.Response = con._get_data(abs_url)
 
-    assert response.status_code == 404
+    assert response.status_code == 200
