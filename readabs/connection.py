@@ -1,3 +1,5 @@
+from requests.models import Response
+
 import requests as req
 
 def _get_data(url: str) -> req.models.Response:

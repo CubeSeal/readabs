@@ -1,10 +1,13 @@
 from __future__ import annotations
 from typing import NewType
+from io import BytesIO
 
-import re
+import openpyxl as xlsx
+import pandas as pd
+import readabs.connection as conn
 import xml.etree.ElementTree as ET
 
-import readabs.connection as conn
+import re
 
 # Types
 CatNo = NewType('CatNo', str)
@@ -16,6 +19,7 @@ class ABSQueryError(Exception):
     pass
 
 # Class
+
 class ABSQuery:
     _base_query: str = r"https://abs.gov.au:443/servlet/TSSearchServlet\?"
 
@@ -79,3 +83,19 @@ class ABSQuery:
             return_dict[table_name] = table_url
 
         return return_dict
+
+    def get_dataframes(self: ABSQuery, table_url: str) -> list[pd.DataFrame]:
+        workbook_bytes: BytesIO = BytesIO(conn._get_data(table_url).content)
+        workbook: xlsx.Workbook = xlsx.load_workbook(workbook_bytes)
+
+        print("\nThe sheet names in the excel are below:")
+        for names in workbook.sheetnames:
+            print(names)
+
+        print("\nFiltering all with 'Data'")
+
+        df_list: list[pd.DataFrame] = [pd.read_excel(workbook_bytes, sheet_name = s) for s in workbook.sheetnames if 'Data' in s]
+
+        remove_headers: list[pd.DataFrame] = [df.drop(index = df.index[1:9]).reset_index() for df in df_list] #type: ignore
+
+        return remove_headers
