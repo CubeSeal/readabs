@@ -35,6 +35,8 @@ def test_xml_return():
 
 def test_xml_series():
     abs_query: module.ABSQuery = module.ABSQuery("6401.0")
+    table_links: dict[str, str] = abs_query.get_table_links()
 
-    assert isinstance(abs_query.getSeriesList(), list)
-    assert abs_query.getSeriesList() != []
+    assert isinstance(table_links, dict)
+    assert table_links
+
