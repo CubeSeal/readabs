@@ -98,18 +98,10 @@ class ABSQuery:
     def get_table_names(self: ABSQuery) -> list[str]:
         return [elem['TableTitle'] for elem in self._get_serieslist()]
 
-    def get_table_links(self: ABSQuery) -> dict[str, str]:
-        # Goofy shit python.
-        series_list: list[dict[str, str]] = [e for e in self._get_serieslist() if e]
-        return_dict: dict[str, str] = {}
+    def get_table_link(self: ABSQuery, table_title: str) -> dict[str, str]:
+        series_list: list[dict[str,str]] = self._get_serieslist()
 
-        for series in series_list:
-            table_name: str = series['TableTitle']
-            table_url: str = series['TableURL']
-
-            return_dict[table_name] = table_url
-
-        return return_dict
+        return {elem['TableTitle']: elem['TableURL'] for elem in series_list if table_title in elem['TableTitle']} 
 
     def get_dataframes(self: ABSQuery, table_url: str) -> list[pd.DataFrame]:
         workbook_bytes: BytesIO = BytesIO(conn._get_data(table_url).content)

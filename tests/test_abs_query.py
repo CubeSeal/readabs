@@ -46,13 +46,13 @@ def test_get_table_names():
     
     assert abs_query.get_table_names() != []
 
-# def test_get_table_links():
-#     abs_query: module.ABSQuery = module.ABSQuery("6401.0")
-#     table_links: dict[str, str] = abs_query.get_table_links()
-# 
-#     assert isinstance(table_links, dict)
-#     assert table_links # Zero length test
-# 
+def test_get_table_link():
+    abs_query: module.ABSQuery = module.ABSQuery("6401.0")
+    table_links: dict[str, str] = abs_query.get_table_link("Table 1")
+
+    assert isinstance(table_links, dict)
+    assert not table_links # Zero length test
+
 # def test_get_dataframes():
 #     abs_query: module.ABSQuery = module.ABSQuery("6401.0")
 #     table_links: dict[str, str] = abs_query.get_table_links()
