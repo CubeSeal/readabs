@@ -13,6 +13,7 @@ import re
 CatNo = NewType('CatNo', str)
 SeriesID = NewType('SeriesID', str)
 ABSXML = NewType('ABSXML', ET.Element)
+ABSSeries = NewType('ABSSeries', dict[str, str])
 
 # Exception Class
 class ABSQueryError(Exception):
@@ -23,10 +24,14 @@ class ABSQueryError(Exception):
 class ABSQuery:
     _base_query: str = r"https://abs.gov.au:443/servlet/TSSearchServlet\?"
 
-    def __init__(self: ABSQuery, catno: str | None = None, seriesID: str | None = None):
+    def __init__(self: ABSQuery, catno: str | None = None, seriesID: str | None = None, table_title: str | None = None):
 
         self.catno: CatNo | None = None
         self.seriesID: SeriesID | None = None
+        self.table_title: str | None = table_title
+
+        # Not set in __init__, but in _get_serieslist() because expensive.
+        self.series_list: list[ABSSeries] | None = None
        
         # These should be mutually exclusive.
         if catno is not None:
@@ -43,11 +48,11 @@ class ABSQuery:
             else:
                 raise ABSQueryError("Either catno or seriesID must be provided")
 
-    def _construct_query(self: ABSQuery, ttitle: str | None = None, pg: int | None = None) -> str:
+    def _construct_query(self: ABSQuery, pg: int | None = None) -> str:
         out_str: list[str | None] = []
 
-        if ttitle is not None:
-            out_str.append(f"ttitle={ttitle}")
+        if self.table_title is not None:
+            out_str.append(f"ttitle={self.table_title}")
 
         if pg is not None:
             out_str.append(f"pg={pg}")
@@ -68,7 +73,7 @@ class ABSQuery:
         num_pages_elem: ET.Element | None = pg_1.find('NumPages')
         num_pages: str | None = num_pages_elem.text if num_pages_elem is not None else None
         if num_pages is not None:
-            print(f"\nFound {num_pages} pages for this id in the ABS time series dictionary. Downloading all pages...")
+            print(f"\nFound {num_pages} pages for this id in the ABS time series dictionary. Downloading all pages...", sep = '')
 
             for i in range (2, int(num_pages) + 1):
                 print(f"{i}, ", end = '')
@@ -78,32 +83,49 @@ class ABSQuery:
                 
         return return_element
 
-    def _get_serieslist(self: ABSQuery) -> list[dict[str, str]]:
-        series_list: list[dict[str, str]] = []
-        xml: ET.Element = self._get_timeseries_dict_xml()
+    def _get_serieslist(self: ABSQuery) -> None:
+        series_list: list[ABSSeries] = []
+        
+        if self.series_list is None:
+            xml: ET.Element = self._get_timeseries_dict_xml()
 
-        for series in xml.iter('Series'):
-            series_dict: dict[str, str] = {}
+            for series in xml.iter('Series'):
+                series_dict: ABSSeries = ABSSeries({})
 
-            for child in series:
-                if child.text is not None:
-                    series_dict[child.tag] = child.text 
-                else:
-                    raise ABSQueryError(f"No text found for child tag {child.tag}")
+                for child in series:
+                    if child.text is not None:
+                        series_dict[child.tag] = child.text 
+                    else:
+                        raise ABSQueryError(f"No text found for child tag {child.tag}")
 
-            series_list.append(series_dict)
+                series_list.append(series_dict)
 
-        return series_list
+            self.series_list = series_list
 
-    def get_table_names(self: ABSQuery) -> list[str]:
-        return [elem['TableTitle'] for elem in self._get_serieslist()]
+    def get_table_names(self: ABSQuery) -> list[str] | None:
+        self._get_serieslist()
+        return_value: list[str] | None = None
 
-    def get_table_link(self: ABSQuery, table_title: str) -> dict[str, str]:
-        series_list: list[dict[str,str]] = self._get_serieslist()
+        if series_list := self.series_list:
+            return_value = [elem['TableTitle'] for elem in series_list]
+        else:
+            return_value = None
 
-        return {elem['TableTitle']: elem['TableURL'] for elem in series_list if table_title in elem['TableTitle']} 
+        return return_value
 
-    def get_dataframes(self: ABSQuery, table_url: str) -> list[pd.DataFrame]:
+    def get_table_link(self: ABSQuery, table_title: str) -> dict[str, str] | None:
+        self._get_serieslist()
+        return_value: dict[str, str] | None = None
+
+        if series_list := self.series_list:
+            return_value = {elem['TableTitle']: elem['TableURL'] for elem in series_list if table_title in elem['TableTitle']}
+        else:
+            return_value = None
+
+        return return_value
+
+    @staticmethod
+    def get_dataframe(table_url: str) -> pd.DataFrame:
         workbook_bytes: BytesIO = BytesIO(conn._get_data(table_url).content)
         workbook: xlsx.Workbook = xlsx.load_workbook(workbook_bytes)
 
@@ -116,5 +138,7 @@ class ABSQuery:
         df_list: list[pd.DataFrame] = [pd.read_excel(workbook_bytes, sheet_name = s) for s in workbook.sheetnames if 'Data' in s]
 
         remove_headers: list[pd.DataFrame] = [df.drop(index = df.index[1:9]).reset_index() for df in df_list] #type: ignore
+        
+        concat_df: pd.DataFrame = pd.concat(remove_headers, axis = 1)
 
-        return remove_headers
+        return concat_df

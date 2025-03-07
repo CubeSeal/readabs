@@ -37,7 +37,9 @@ def test_xml_return():
 
 def test_get_serieslist():
     abs_query: module.ABSQuery = module.ABSQuery("6401.0")
-    series_list: list[dict[str, str]] = abs_query._get_serieslist()
+    abs_query._get_serieslist()
+
+    series_list = abs_query.series_list
     
     assert series_list != []
 
@@ -48,15 +50,16 @@ def test_get_table_names():
 
 def test_get_table_link():
     abs_query: module.ABSQuery = module.ABSQuery("6401.0")
-    table_links: dict[str, str] = abs_query.get_table_link("Table 1")
+    table_links: dict[str, str] | None = abs_query.get_table_link("Table 1")
 
     assert isinstance(table_links, dict)
     assert not table_links # Zero length test
 
-# def test_get_dataframes():
-#     abs_query: module.ABSQuery = module.ABSQuery("6401.0")
-#     table_links: dict[str, str] = abs_query.get_table_links()
-# 
-#     for _, value in table_links.items():
-#         df: list[pd.DataFrame] = abs_query.get_dataframes(value)
-#         assert isinstance(df, list)
+def test_get_dataframes():
+    abs_query: module.ABSQuery = module.ABSQuery("6401.0")
+    table_link: dict[str, str] | None = abs_query.get_table_link("Table 1")
+
+    if table_link:
+        for _, value in table_link.items():
+            df: pd.DataFrame = abs_query.get_dataframe(value)
+            assert isinstance(df, pd.DataFrame)
