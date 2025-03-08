@@ -8,6 +8,7 @@ import readabs.connection as conn
 import xml.etree.ElementTree as ET
 
 import re
+import datetime
 
 # Types
 CatNo = NewType('CatNo', str)
@@ -73,7 +74,7 @@ class ABSQuery:
         num_pages: str | None = num_pages_elem.text if num_pages_elem is not None else None
 
         if num_pages is not None:
-            print(f"\nFound {num_pages} pages for this id in the ABS time series dictionary. Downloading all pages...", sep = '')
+            print(f"\nFound {num_pages} pages for this id in the ABS time series dictionary. Downloading all pages...", end = '')
 
             for i in range (2, int(num_pages) + 1):
                 print(f"{i}, ", end = '')
@@ -102,10 +103,10 @@ class ABSQuery:
 
             self.series_list = series_list
 
-    def get_table_names(self: ABSQuery) -> list[str] | None:
+    def get_table_names(self: ABSQuery) -> set[str] | None:
         self._get_serieslist()
 
-        return [elem['TableTitle'] for elem in series_list] if (series_list := self.series_list) else None
+        return set([elem['TableTitle'] for elem in series_list]) if (series_list := self.series_list) else None
 
     def get_table_link(self: ABSQuery, table_title: str) -> dict[str, str] | None:
         self._get_serieslist()
@@ -131,8 +132,30 @@ class ABSQuery:
 
         df_list: list[pd.DataFrame] = [pd.read_excel(workbook_bytes, sheet_name = s) for s in workbook.sheetnames if 'Data' in s]
 
-        remove_headers: list[pd.DataFrame] = [df.drop(index = df.index[1:9]).reset_index() for df in df_list] #type: ignore
+        remove_headers: list[pd.DataFrame] = [ABSQuery._format_ABS_df(df) for df in df_list]
         
-        concat_df: pd.DataFrame = pd.concat(remove_headers, axis = 1, ignore_index = True)
+        concat_df: pd.DataFrame = pd.concat(remove_headers, axis = 1)
 
         return concat_df
+
+    @staticmethod
+    def _format_ABS_df(df: pd.DataFrame) -> pd.DataFrame:
+        return (
+            df
+            .pipe(ABSQuery._rename_cols)
+            .pipe(ABSQuery._remove_ABS_headers)
+        )
+
+    @staticmethod
+    def _rename_cols(df: pd.DataFrame) -> pd.DataFrame:
+        return df.rename({"Unnamed: 0": "Date"}, axis = 1)
+
+    @staticmethod
+    def _remove_ABS_headers(df: pd.DataFrame) -> pd.DataFrame:
+        date_col: pd.Series | None = s if isinstance((s := df['Date']), pd.Series) else None
+
+        if date_col is not None:
+            headers_to_drop: list[bool] = [isinstance(e, datetime.datetime) for e in date_col]
+            return df.loc[headers_to_drop]
+        else:
+            raise ABSQueryError("Can't find renamed date_col date column from _rename_cols().")

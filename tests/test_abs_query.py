@@ -46,25 +46,25 @@ def test_get_serieslist():
 def test_get_table_names():
     abs_query: module.ABSQuery = module.ABSQuery("6401.0")
     
-    assert abs_query.get_table_names() != []
+    # Empty check for sets
+    assert abs_query.get_table_names()
 
 def test_get_table_link():
     abs_query: module.ABSQuery = module.ABSQuery("6401.0")
-    table_links: dict[str, str] | None = abs_query.get_table_link("TABLE 1")
+    table_links: dict[str, str] | None = abs_query.get_table_link("TABLES 1 and 2.")
 
     assert isinstance(table_links, dict)
     assert table_links # Zero length test
 
 def test_get_dataframe():
     abs_query: module.ABSQuery = module.ABSQuery("6401.0")
-    table_link: dict[str, str] | None = abs_query.get_table_link("TABLE 1")
+    table_link: dict[str, str] | None = abs_query.get_table_link("TABLES 1 and 2.")
 
     if table_link:
         for _, value in table_link.items():
             df: pd.DataFrame = abs_query.get_dataframe(value)
 
-            print(df)
-            
+            print(df.head())
             assert isinstance(df, pd.DataFrame)
     else:
             raise AssertionError("table_link is None")
