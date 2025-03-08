@@ -117,7 +117,7 @@ class ABSQuery:
         self._get_serieslist()
         return_value: dict[str, str] | None = None
 
-        if series_list := self.series_list:
+        if (series_list := self.series_list):
             return_value = {elem['TableTitle']: elem['TableURL'] for elem in series_list if table_title in elem['TableTitle']}
         else:
             return_value = None
@@ -139,6 +139,6 @@ class ABSQuery:
 
         remove_headers: list[pd.DataFrame] = [df.drop(index = df.index[1:9]).reset_index() for df in df_list] #type: ignore
         
-        concat_df: pd.DataFrame = pd.concat(remove_headers, axis = 1)
+        concat_df: pd.DataFrame = pd.concat(remove_headers, axis = 1, ignore_index = True)
 
         return concat_df
