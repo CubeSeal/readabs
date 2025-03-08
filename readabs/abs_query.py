@@ -41,12 +41,11 @@ class ABSQuery:
             self.catno = CatNo(catno)
             self.seriesID = None
 
+        elif seriesID is not None:
+            self.catno = None
+            self.seriesID = SeriesID(seriesID)
         else:
-            if seriesID is not None:
-                self.catno = None
-                self.seriesID = SeriesID(seriesID)
-            else:
-                raise ABSQueryError("Either catno or seriesID must be provided")
+            raise ABSQueryError("Either catno or seriesID must be provided")
 
     def _construct_query(self: ABSQuery, pg: int | None = None) -> str:
         out_str: list[str | None] = []
@@ -72,6 +71,7 @@ class ABSQuery:
 
         num_pages_elem: ET.Element | None = pg_1.find('NumPages')
         num_pages: str | None = num_pages_elem.text if num_pages_elem is not None else None
+
         if num_pages is not None:
             print(f"\nFound {num_pages} pages for this id in the ABS time series dictionary. Downloading all pages...", sep = '')
 
@@ -104,20 +104,14 @@ class ABSQuery:
 
     def get_table_names(self: ABSQuery) -> list[str] | None:
         self._get_serieslist()
-        return_value: list[str] | None = None
 
-        if series_list := self.series_list:
-            return_value = [elem['TableTitle'] for elem in series_list]
-        else:
-            return_value = None
-
-        return return_value
+        return [elem['TableTitle'] for elem in series_list] if (series_list := self.series_list) else None
 
     def get_table_link(self: ABSQuery, table_title: str) -> dict[str, str] | None:
         self._get_serieslist()
         return_value: dict[str, str] | None = None
 
-        if (series_list := self.series_list):
+        if series_list := self.series_list:
             return_value = {elem['TableTitle']: elem['TableURL'] for elem in series_list if table_title in elem['TableTitle']}
         else:
             return_value = None
