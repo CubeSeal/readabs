@@ -1,9 +1,27 @@
-import pytest
-
 import pandas as pd
 import xml.etree.ElementTree as ET
+import requests as req
+
+import pytest
 
 import readabs.abs_query as module
+
+ABS_URL = "https://ausstats.abs.gov.au/servlet/TSSearchServlet?"
+
+def test_get_data():
+    response: req.models.Response = req.get(ABS_URL)
+
+    assert response is not None
+
+def test_get_data_type():
+    response: req.models.Response = req.get(ABS_URL)
+
+    assert isinstance(response, req.models.Response)
+
+def test_abs_conn_status():
+    response: req.models.Response = req.get(ABS_URL)
+
+    assert response.status_code == 200
 
 def test_abs_query_exists():
     

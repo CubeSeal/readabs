@@ -4,8 +4,8 @@ from io import BytesIO
 
 import openpyxl as xlsx
 import pandas as pd
-import readabs.connection as conn
 import xml.etree.ElementTree as ET
+import requests as req
 
 import re
 import datetime
@@ -67,7 +67,7 @@ class ABSQuery:
 
     def _get_timeseries_dict_xml(self: ABSQuery) -> ABSXML:
         xml_query: str = self._construct_query()
-        pg_1: ABSXML = ABSXML(ET.fromstring(conn._get_data(xml_query).text))
+        pg_1: ABSXML = ABSXML(ET.fromstring(req.get(xml_query).text))
         return_element: ABSXML = pg_1
 
         num_pages_elem: ET.Element | None = pg_1.find('NumPages')
@@ -79,7 +79,7 @@ class ABSQuery:
             for i in range (2, int(num_pages) + 1):
                 print(f"{i}, ", end = '')
                 _xml_query: str = self._construct_query(pg = i)
-                _xml_result: str = conn._get_data(_xml_query).text
+                _xml_result: str = req.get(_xml_query).text
                 return_element.append(ET.fromstring(_xml_result))
                 
         return return_element
@@ -121,7 +121,7 @@ class ABSQuery:
 
     @staticmethod
     def get_dataframe(table_url: str) -> pd.DataFrame:
-        workbook_bytes: BytesIO = BytesIO(conn._get_data(table_url).content)
+        workbook_bytes: BytesIO = BytesIO(req.get(table_url).content)
         workbook: xlsx.Workbook = xlsx.load_workbook(workbook_bytes)
 
         print("\nThe sheet names in the excel are below:")
