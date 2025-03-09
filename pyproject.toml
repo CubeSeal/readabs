@@ -15,6 +15,7 @@ openpyxl = "^3.1.5"
 [tool.poetry.group.test.dependencies]
 pytest = "^8.3.4"
 pytest-mock = "^3.14.0"
+xmltodict = "^0.14.2"
 
 [build-system]
 requires = ["poetry-core"]
