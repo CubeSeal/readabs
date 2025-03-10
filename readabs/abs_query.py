@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import NewType
+from typing import NewType, Type
 from io import BytesIO
 
 import openpyxl as xlsx
@@ -11,40 +11,44 @@ import re
 import datetime
 
 # Types
-CatNo = NewType('CatNo', str)
-SeriesID = NewType('SeriesID', str)
 ABSXML = NewType('ABSXML', ET.Element)
 ABSSeries = NewType('ABSSeries', dict[str, str])
 
+# ID Types
+class CatNo:
+    def __init__(self: CatNo, catno: str) -> None:
+        self.catno = catno
+
+class SeriesID:
+    def __init__(self: SeriesID, series_id: str) -> None:
+        self.series_id = series_id
+            
 # Exception Class
 class ABSQueryError(Exception):
     pass
 
 # Class
-
 class ABSQuery:
     _base_query: str = r"https://abs.gov.au:443/servlet/TSSearchServlet\?"
 
     def __init__(self: ABSQuery, catno: str | None = None, seriesID: str | None = None, table_title: str | None = None):
 
-        self.catno: CatNo | None = None
-        self.seriesID: SeriesID | None = None
+        self.id: CatNo | SeriesID
         self.table_title: str | None = table_title
-
         # Not set in __init__, but in _get_serieslist() because expensive.
         self.series_list: list[ABSSeries] | None = None
        
-        # These should be mutually exclusive.
+        # Checking sum types here
+        # Alternative: enforce the sum type in the call (a bit annoying to use though, but no exceptions).
         if catno is not None:
             if re.search(r"\.0$", catno) is None:
                 raise ABSQueryError("catno must end in '.0'")
 
-            self.catno = CatNo(catno)
-            self.seriesID = None
+            self.id = CatNo(catno)
 
         elif seriesID is not None:
-            self.catno = None
-            self.seriesID = SeriesID(seriesID)
+            self.id = SeriesID(seriesID)
+
         else:
             raise ABSQueryError("Either catno or seriesID must be provided")
 
@@ -57,11 +61,11 @@ class ABSQuery:
         if pg is not None:
             out_str.append(f"pg={pg}")
 
-        if self.catno is not None:
-            out_str.append(f"catno={self.catno}")
+        if isinstance(self.id, CatNo):
+            out_str.append(f"catno={self.id.catno}")
 
-        if self.seriesID is not None:
-            out_str.append(f"sid={self.seriesID}")
+        if isinstance(self.id, SeriesID):
+            out_str.append(f"sid={self.id.series_id}")
 
         return self._base_query + '&'.join([e for e in out_str if e is not None])
 
@@ -119,8 +123,8 @@ class ABSQuery:
 
         return return_value
 
-    @staticmethod
-    def get_dataframe(table_url: str) -> pd.DataFrame:
+    @classmethod
+    def get_dataframe(cls: Type[ABSQuery], table_url: str) -> pd.DataFrame:
         workbook_bytes: BytesIO = BytesIO(req.get(table_url).content)
         workbook: xlsx.Workbook = xlsx.load_workbook(workbook_bytes)
 
@@ -132,18 +136,18 @@ class ABSQuery:
 
         df_list: list[pd.DataFrame] = [pd.read_excel(workbook_bytes, sheet_name = s) for s in workbook.sheetnames if 'Data' in s]
 
-        remove_headers: list[pd.DataFrame] = [ABSQuery._format_ABS_df(df) for df in df_list]
+        remove_headers: list[pd.DataFrame] = [cls._format_ABS_df(df) for df in df_list]
         
         concat_df: pd.DataFrame = pd.concat(remove_headers, axis = 1)
 
         return concat_df
 
-    @staticmethod
-    def _format_ABS_df(df: pd.DataFrame) -> pd.DataFrame:
+    @classmethod
+    def _format_ABS_df(cls: Type[ABSQuery], df: pd.DataFrame) -> pd.DataFrame:
         return (
             df
-            .pipe(ABSQuery._rename_cols)
-            .pipe(ABSQuery._remove_ABS_headers)
+            .pipe(cls._rename_cols)
+            .pipe(cls._remove_ABS_headers)
         )
 
     @staticmethod
