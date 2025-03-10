@@ -133,14 +133,12 @@ class ABSQuery:
             print(names)
 
         print("\nFiltering all with 'Data'")
-
         df_list: list[pd.DataFrame] = [pd.read_excel(workbook_bytes, sheet_name = s) for s in workbook.sheetnames if 'Data' in s]
 
+        print("\nFormatting dataframes...")
         remove_headers: list[pd.DataFrame] = [cls._format_ABS_df(df) for df in df_list]
-        
-        concat_df: pd.DataFrame = pd.concat(remove_headers, axis = 1)
 
-        return concat_df
+        return pd.concat(remove_headers, axis = 1)
 
     @classmethod
     def _format_ABS_df(cls: Type[ABSQuery], df: pd.DataFrame) -> pd.DataFrame:
