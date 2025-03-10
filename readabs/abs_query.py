@@ -40,13 +40,13 @@ class ABSQuery:
        
         # Checking sum types here
         # Alternative: enforce the sum type in the call (a bit annoying to use though, but no exceptions).
-        if catno is not None:
-            if re.search(r"\.0$", catno) is None:
+        if catno:
+            if re.search(r"\.0$", catno):
+                self.id = CatNo(catno)
+            else:
                 raise ABSQueryError("catno must end in '.0'")
 
-            self.id = CatNo(catno)
-
-        elif seriesID is not None:
+        elif seriesID:
             self.id = SeriesID(seriesID)
 
         else:
@@ -55,10 +55,10 @@ class ABSQuery:
     def _construct_query(self: ABSQuery, pg: int | None = None) -> str:
         out_str: list[str | None] = []
 
-        if self.table_title is not None:
+        if self.table_title:
             out_str.append(f"ttitle={self.table_title}")
 
-        if pg is not None:
+        if pg:
             out_str.append(f"pg={pg}")
 
         if isinstance(self.id, CatNo):
@@ -67,7 +67,7 @@ class ABSQuery:
         if isinstance(self.id, SeriesID):
             out_str.append(f"sid={self.id.series_id}")
 
-        return self._base_query + '&'.join([e for e in out_str if e is not None])
+        return self._base_query + '&'.join([e for e in out_str if e])
 
     def _get_timeseries_dict_xml(self: ABSQuery) -> ABSXML:
         xml_query: str = self._construct_query()
@@ -75,9 +75,9 @@ class ABSQuery:
         return_element: ABSXML = pg_1
 
         num_pages_elem: ET.Element | None = pg_1.find('NumPages')
-        num_pages: str | None = num_pages_elem.text if num_pages_elem is not None else None
+        num_pages: str | None = num_pages_elem.text if num_pages_elem else None
 
-        if num_pages is not None:
+        if num_pages:
             print(f"\nFound {num_pages} pages for this id in the ABS time series dictionary. Downloading all pages...", end = '')
 
             for i in range (2, int(num_pages) + 1):
@@ -91,14 +91,14 @@ class ABSQuery:
     def _get_serieslist(self: ABSQuery) -> None:
         series_list: list[ABSSeries] = []
         
-        if self.series_list is None:
+        if not self.series_list:
             xml: ET.Element = self._get_timeseries_dict_xml()
 
             for series in xml.iter('Series'):
                 series_dict: ABSSeries = ABSSeries({})
 
                 for child in series:
-                    if child.text is not None:
+                    if child.text:
                         series_dict[child.tag] = child.text 
                     else:
                         raise ABSQueryError(f"No text found for child tag {child.tag}")
@@ -158,8 +158,8 @@ class ABSQuery:
     def _remove_ABS_headers(df: pd.DataFrame) -> pd.DataFrame:
         date_col: pd.Series | None = s if isinstance((s := df['Date']), pd.Series) else None
 
-        if date_col is not None:
-            headers_to_drop: list[bool] = [isinstance(e, datetime.datetime) for e in date_col]
-            return df.loc[headers_to_drop]
+        if isinstance(date_col, pd.Series):
+            headers_to_keep: list[bool] = [isinstance(e, datetime.datetime) for e in date_col]
+            return df.loc[headers_to_keep]
         else:
             raise ABSQueryError("Can't find renamed date_col date column from _rename_cols().")
