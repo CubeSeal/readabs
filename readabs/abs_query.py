@@ -154,7 +154,7 @@ class ABSQuery:
 
     @staticmethod
     def _remove_ABS_headers(df: pd.DataFrame) -> pd.DataFrame:
-        date_col: pd.Series | None = s if isinstance((s := df['Date']), pd.Series) else None
+        date_col: pd.Series = df['Date']
 
         if isinstance(date_col, pd.Series):
             headers_to_keep: list[bool] = [isinstance(e, datetime.datetime) for e in date_col]
