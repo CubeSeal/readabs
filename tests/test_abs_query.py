@@ -97,13 +97,13 @@ def test_get_table_names(mocker: mock.MockerFixture, xml_magic_mock):
     # Empty check for sets
     assert abs_query.get_table_names()
 
-def test_get_table_link(mocker: mock.MockerFixture, xml_magic_mock):
+def test_get_table_links(mocker: mock.MockerFixture, xml_magic_mock):
     mock_response = mocker.MagicMock()
     mock_response.text = xml_magic_mock
     mocker.patch("requests.get", return_value = mock_response)
 
     abs_query: module.ABSQuery = module.ABSQuery(EXAMPLE_CAT_NO)
-    table_links: dict[str, str] | None = abs_query.get_table_link(EXAMPLE_TABLE)
+    table_links: dict[str, str] | None = abs_query.get_table_links(EXAMPLE_TABLE)
 
     assert isinstance(table_links, dict)
     assert table_links # Zero length test
