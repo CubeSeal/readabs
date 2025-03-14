@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import NewType, Type
+from typing import NewType, Type, List, Tuple
 from io import BytesIO
 
 import openpyxl as xlsx
@@ -46,7 +46,7 @@ class ABSQuery:
     Methods:
         get_table_names(): Get the list of available tables in the series list.
         get_table_links(): Get the download link for a given table name.
-        get_dataframe(): Download the dataframe using the link.  
+        get_dataframe(): Searched for table name and downloads matching dataframes.
 
     Typical usage example:
         # Create ABSQuery object with either Catalogue No. or Series ID. 
@@ -56,13 +56,12 @@ class ABSQuery:
         table_names: set[str] = cpi_query.get_table_names()
         print(table_names)
 
-        # Get link and download.
-        table_link: dict[str, str] = cpi_query.get_table_links("TABLES 1 and 2.")
-        data_list: list[pd.DataFrame] 
+        # Get links
+        table_links: dict[str, str] = cpi_query.get_table_links()
+        print(table_links)
 
-        for _, values in table_link:
-            data_list.append(cpi_query.get_dataframe(values))
-        
+        # Download dataframes
+        data: dict[str, pd.DataFrame] = query.get_dataframe("TABLES 1 and 2.")
     """
     _base_query: str = r"https://abs.gov.au:443/servlet/TSSearchServlet\?"
 
@@ -81,6 +80,8 @@ class ABSQuery:
         self.table_title: str | None = table_title
         # Not set in __init__, but in _get_serieslist() because expensive.
         self.series_list: list[ABSSeries] | None = None
+        # Not set in __init__, but in get_table_links() because it depends on above.
+        self.table_info: dict[str, str] | None = None
        
         # Checking sum types here
         # Alternative: enforce the sum type in the call (a bit annoying to use though, but no exceptions).
@@ -175,6 +176,16 @@ class ABSQuery:
 
             self.series_list = series_list
 
+    def _set_table_info(self: ABSQuery) -> None:
+        """
+        Calls ._get_serieslist and sets table info based on the .series_list property. 
+        """
+        self._get_serieslist()
+
+        if series_list := self.series_list:
+            if not self.table_info:
+                self.table_info = {elem['TableTitle']: elem['TableURL'] for elem in series_list}
+
     def get_table_names(self: ABSQuery) -> set[str] | None:
         """
         Get all available table names for an ABSQuery object.
@@ -186,10 +197,11 @@ class ABSQuery:
 
         return set([elem['TableTitle'] for elem in series_list]) if (series_list := self.series_list) else None
 
-    def get_table_links(self: ABSQuery, table_title: str) -> dict[str, str] | None:
+    def get_table_links(self: ABSQuery, table_title: str) -> dict[str, str]:
         """
         Gets all the table links for a given table_title query. Will try to match everything where table_title is in
         TimeSeries Dictionary.
+        *Note: Can return empty dictionary if there's no match.
 
         Args:
             table_title: A string. Is matched against table titles with `in` keywords
@@ -197,43 +209,42 @@ class ABSQuery:
         Returns:
             A dictionary of TableTitle's and TableURL's.
         """
-        self._get_serieslist()
-        return_value: dict[str, str] | None = None
+        self._set_table_info()
 
-        if series_list := self.series_list:
-            return_value = {elem['TableTitle']: elem['TableURL'] for elem in series_list if table_title in elem['TableTitle']}
+        if (table_info := self.table_info):
+            return {k:v for k, v in table_info.items() if table_title in k}
         else:
-            return_value = None
+            raise ABSQueryError("._self_table_info() did not set .table_info properly.")
 
-        return return_value
-
-    @classmethod
-    def get_dataframe(cls: Type[ABSQuery], table_url: str) -> pd.DataFrame:
+    def get_dataframe(self: ABSQuery, table_str: str) -> dict[str, pd.DataFrame]:
         """
-        Downloads pandas dataframe with given table_url.
-        *Note: I deliberately kept this separate from the object to enforce a distinction between getting the table
-           url and downloading the data. Not exactly sure why though, maybe I'll remember.
+        Downloads pandas dataframe by searching for table_str.
+        *Note: Can return empty dictionary if there's no match.
 
         Args:
-            table_url: URL string to excel file to download.
+            table_str: string to search self.table_info for.
 
         Returns:
-            A Pandas Dataframe with the contents of the excel file stitched together.
+            A dictionary of table names and pandas DataFrames that matched the search.
         """
-        workbook_bytes: BytesIO = BytesIO(req.get(table_url).content)
-        workbook: xlsx.Workbook = xlsx.load_workbook(workbook_bytes)
+        table_links: dict[str, str] = self.get_table_links(table_str)
 
-        print("\nThe sheet names in the excel are below:")
-        for names in workbook.sheetnames:
-            print(names)
+        return_dict: dict[str, pd.DataFrame] = {}
 
-        print("\nFiltering all with 'Data'")
-        df_list: list[pd.DataFrame] = [pd.read_excel(workbook_bytes, sheet_name = s) for s in workbook.sheetnames if 'Data' in s]
+        for name, url in table_links.items():
+            print(f"Getting data for table: {name}")
+            
+            workbook_bytes: BytesIO = BytesIO(req.get(url).content)
+            workbook: xlsx.Workbook = xlsx.load_workbook(workbook_bytes)
+            
+            # Format and combine since ABS Excel workbooks usually come with multiple sheets of data.
+            df_list: list[pd.DataFrame] = [pd.read_excel(workbook_bytes, sheet_name = s) for s in workbook.sheetnames if 'Data' in s]
+            remove_headers: list[pd.DataFrame] = [self._format_ABS_df(df) for df in df_list]
+            final_dataframe = pd.concat(remove_headers, axis = 1)
 
-        print("\nFormatting dataframes...")
-        remove_headers: list[pd.DataFrame] = [cls._format_ABS_df(df) for df in df_list]
+            return_dict[name] = final_dataframe
 
-        return pd.concat(remove_headers, axis = 1)
+        return return_dict
 
     @classmethod
     def _format_ABS_df(cls: Type[ABSQuery], df: pd.DataFrame) -> pd.DataFrame:

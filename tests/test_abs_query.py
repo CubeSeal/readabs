@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import List
 
 import pandas as pd
 import xml.etree.ElementTree as ET
@@ -98,18 +99,15 @@ def test_get_table_links(mocker: mock.MockerFixture):
     assert table_links # Zero length test
 
 def test_get_dataframe():
-    table_link: dict[str, str] = {
-        'TABLES 1 and 2. CPI: All Groups, Index Numbers and Percentage Changes'
-        : 'https://www.abs.gov.au/statistics/economy/price-indexes-and-inflation/consumer-price-index-australia/latest-release/640101.xlsx' 
-    }
-
     abs_query: module.ABSQuery = module.ABSQuery(EXAMPLE_CAT_NO)
 
-    if table_link:
-        for _, value in table_link.items():
-            df: pd.DataFrame = abs_query.get_dataframe(value)
+    test_dfs: dict[str, pd.DataFrame] = abs_query.get_dataframe(EXAMPLE_TABLE)
 
-            print(df.head())
-            assert isinstance(df, pd.DataFrame)
-    else:
-            raise AssertionError("table_link is None")
+    assert len(test_dfs) != 0 
+
+def test_get_dataframe_fup():
+    abs_query: module.ABSQuery = module.ABSQuery(EXAMPLE_CAT_NO)
+
+    test_dfs: dict[str, pd.DataFrame] = abs_query.get_dataframe("This isn't a table.")
+
+    assert len(test_dfs) == 0 
