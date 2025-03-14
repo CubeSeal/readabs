@@ -130,13 +130,14 @@ class ABSQuery:
             ElementTree XML object with data from all pages of timeseries dict for ABSQuery().
         """
         xml_query: str = self._construct_query()
+
         pg_1: ABSXML = ABSXML(ET.fromstring(req.get(xml_query).text))
         return_element: ABSXML = pg_1
 
         num_pages_elem: ET.Element | None = pg_1.find('NumPages')
-        num_pages: str | None = num_pages_elem.text if num_pages_elem else None
+        num_pages: str | None = num_pages_elem.text if num_pages_elem is not None else None
 
-        if num_pages:
+        if num_pages is not None:
             print(f"\nFound {num_pages} pages for this id in the ABS time series dictionary. Downloading all pages...", end = '')
 
             for i in range (2, int(num_pages) + 1):
@@ -145,7 +146,7 @@ class ABSQuery:
                 _xml_result: str = req.get(_xml_query).text
                 return_element.append(ET.fromstring(_xml_result))
                 
-        return return_element
+        return pg_1
 
     def _get_serieslist(self: ABSQuery) -> None:
         """
