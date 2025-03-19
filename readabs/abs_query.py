@@ -1,5 +1,6 @@
 from __future__ import annotations
-from typing import NewType, Type
+from types import CoroutineType
+from typing import NewType, Type, Any
 from io import BytesIO
 
 import openpyxl as xlsx
@@ -9,6 +10,8 @@ import requests as req
 
 import re
 import datetime
+import aiohttp
+import asyncio
 
 # Types
 ABSXML = NewType('ABSXML', ET.Element)
@@ -24,7 +27,7 @@ class SeriesID:
     """Type for Series ID."""
     def __init__(self: SeriesID, series_id: str) -> None:
         self.series_id = series_id
-            
+
 # Exception Class
 class ABSQueryError(Exception):
     """Exception for ABSQuery class."""
@@ -87,7 +90,7 @@ class ABSQuery:
         self.series_list: list[ABSSeries] | None = None
         # Not set in __init__, but in get_table_links() because it depends on above.
         self.table_info: dict[str, str] | None = None
-       
+
         # Checking sum types here
         # Alternative: enforce the sum type in the call (a bit annoying to use though, but no exceptions).
         if catno:
@@ -135,25 +138,34 @@ class ABSQuery:
         Returns:
             ElementTree XML object with data from all pages of timeseries dict for ABSQuery().
         """
+        async def _fetch_data(session, url) -> ET.Element:
+            async with session.get(url) as response:
+                response_text: str = await response.text()
+                return ET.fromstring(response_text)
+
+        async def _get_elements(num_pages: int) -> list[ET.Element]:
+            async with aiohttp.ClientSession() as session:
+                urls: list[str] = [self._construct_query(pg = i) for i in range(2, num_pages + 1)]
+                tasks: list[CoroutineType[Any, Any, ET.Element]] = [_fetch_data(session, url) for url in urls]
+
+                return_list: list[ET.Element] = await asyncio.gather(*tasks)
+                return return_list
+
         xml_query: str = self._construct_query()
 
         pg_1: ABSXML = ABSXML(ET.fromstring(req.get(xml_query).text))
-        return_element: ABSXML = pg_1
+        return_element: ET.Element = pg_1
 
+        # TODO: See if there is a better way to do this.
         num_pages_elem: ET.Element | None = pg_1.find('NumPages')
         num_pages: str | None = num_pages_elem.text if num_pages_elem is not None else None
+        num_pages_int: int | None = int(num_pages) if num_pages is not None else None
 
-        if num_pages is not None:
-            print(f"\nFound {num_pages} pages for this id in the ABS time series dictionary."
-               " Downloading all pages...", end = '')
+        if isinstance(num_pages_int, int) and num_pages_int > 1:
+            additional_pages: list[ET.Element] = asyncio.run(_get_elements(num_pages_int))
+            return_element.extend(additional_pages)
 
-            for i in range (2, int(num_pages) + 1):
-                print(f"{i}, ", end = '')
-                _xml_query: str = self._construct_query(pg = i)
-                _xml_result: str = req.get(_xml_query).text
-                return_element.append(ET.fromstring(_xml_result))
-                
-        return pg_1
+        return ABSXML(return_element)
 
     def _get_serieslist(self: ABSQuery) -> None:
         """
@@ -165,7 +177,7 @@ class ABSQuery:
             ABSQueryError: If entry in series is not populated.
         """
         series_list: list[ABSSeries] = []
-        
+
         if not self.series_list:
             xml: ET.Element = self._get_timeseries_dict_xml()
 
@@ -211,7 +223,7 @@ class ABSQuery:
 
         Args:
             table_title: A string. Is matched against table titles with `in` keywords
-        
+
         Returns:
             A dictionary of TableTitle's and TableURL's.
         """
@@ -239,10 +251,10 @@ class ABSQuery:
 
         for name, url in table_links.items():
             print(f"Getting data for table: {name}")
-            
+
             workbook_bytes: BytesIO = BytesIO(req.get(url).content)
             workbook: xlsx.Workbook = xlsx.load_workbook(workbook_bytes)
-            
+
             # Format and combine since ABS Excel workbooks usually come with multiple sheets of data.
             df_list: list[pd.DataFrame] = \
                 [pd.read_excel(workbook_bytes, sheet_name = s) for s in workbook.sheetnames if 'Data' in s]
