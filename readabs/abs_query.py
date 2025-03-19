@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import NewType, Type, List, Tuple
+from typing import NewType, Type
 from io import BytesIO
 
 import openpyxl as xlsx
@@ -65,14 +65,19 @@ class ABSQuery:
     """
     _base_query: str = r"https://abs.gov.au:443/servlet/TSSearchServlet\?"
 
-    def __init__(self: ABSQuery, catno: str | None = None, seriesID: str | None = None, table_title: str | None = None) -> None:
+    def __init__(
+        self: ABSQuery,
+        catno: str | None = None,
+        seriesID: str | None = None,
+        table_title: str | None = None
+    ) -> None:
         """
         ABSQuery constructor.
 
         Args:
             * Note if both catno and seriesID are None then an exception will be raised.
-            catno (Optional): String for ABS Catalogue No. Must contain '.0' as suffix. E.g. "6401.0". Preferred over `seriesID` if both
-                supplied.
+            catno (Optional): String for ABS Catalogue No. Must contain '.0' as suffix. E.g. "6401.0". Preferred over
+                `seriesID` if both supplied.
             seriesID (Optional): String for Series ID. 
             table_title (Optional): String in the format the Timeseries Dictionary likes.
         """
@@ -139,7 +144,8 @@ class ABSQuery:
         num_pages: str | None = num_pages_elem.text if num_pages_elem is not None else None
 
         if num_pages is not None:
-            print(f"\nFound {num_pages} pages for this id in the ABS time series dictionary. Downloading all pages...", end = '')
+            print(f"\nFound {num_pages} pages for this id in the ABS time series dictionary."
+               " Downloading all pages...", end = '')
 
             for i in range (2, int(num_pages) + 1):
                 print(f"{i}, ", end = '')
@@ -238,7 +244,8 @@ class ABSQuery:
             workbook: xlsx.Workbook = xlsx.load_workbook(workbook_bytes)
             
             # Format and combine since ABS Excel workbooks usually come with multiple sheets of data.
-            df_list: list[pd.DataFrame] = [pd.read_excel(workbook_bytes, sheet_name = s) for s in workbook.sheetnames if 'Data' in s]
+            df_list: list[pd.DataFrame] = \
+                [pd.read_excel(workbook_bytes, sheet_name = s) for s in workbook.sheetnames if 'Data' in s]
             remove_headers: list[pd.DataFrame] = [self._format_ABS_df(df) for df in df_list]
             final_dataframe = pd.concat(remove_headers, axis = 1)
 
