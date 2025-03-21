@@ -1,6 +1,5 @@
 from __future__ import annotations
-from types import CoroutineType
-from typing import NewType, Type, Any
+from typing import NewType, Type
 from io import BytesIO
 
 import openpyxl as xlsx
@@ -10,8 +9,9 @@ import requests as req
 
 import re
 import datetime
-import aiohttp
 import asyncio
+
+import readabs.connection as conn
 
 # Types
 ABSXML = NewType('ABSXML', ET.Element)
@@ -138,22 +138,11 @@ class ABSQuery:
         Returns:
             ElementTree XML object with data from all pages of timeseries dict for ABSQuery().
         """
-        async def _fetch_data(session, url) -> ET.Element:
-            async with session.get(url) as response:
-                response_text: str = await response.text()
-                return ET.fromstring(response_text)
-
-        async def _get_elements(num_pages: int) -> list[ET.Element]:
-            async with aiohttp.ClientSession() as session:
-                urls: list[str] = [self._construct_query(pg = i) for i in range(2, num_pages + 1)]
-                tasks: list[CoroutineType[Any, Any, ET.Element]] = [_fetch_data(session, url) for url in urls]
-
-                return_list: list[ET.Element] = await asyncio.gather(*tasks)
-                return return_list
 
         xml_query: str = self._construct_query()
+        response: str = asyncio.run(conn.get_element(xml_query))
 
-        pg_1: ABSXML = ABSXML(ET.fromstring(req.get(xml_query).text))
+        pg_1: ABSXML = ABSXML(ET.fromstring(response))
         return_element: ET.Element = pg_1
 
         # TODO: See if there is a better way to do this.
@@ -162,7 +151,9 @@ class ABSQuery:
         num_pages_int: int | None = int(num_pages) if num_pages is not None else None
 
         if isinstance(num_pages_int, int) and num_pages_int > 1:
-            additional_pages: list[ET.Element] = asyncio.run(_get_elements(num_pages_int))
+            urls: list[str] = [self._construct_query(pg = i) for i in range(2, num_pages_int + 1)]
+            
+            additional_pages: list[ET.Element] = [ET.fromstring(r) for r in asyncio.run(conn.get_elements(urls))]
             return_element.extend(additional_pages)
 
         return ABSXML(return_element)
