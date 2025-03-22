@@ -10,8 +10,12 @@ import requests as req
 import re
 import datetime
 import asyncio
+import nest_asyncio
 
 import readabs.connection as conn
+
+# Nesting asyncio to get it working in Jupyter notebooks.
+nest_asyncio.apply()
 
 # Types
 ABSXML = NewType('ABSXML', ET.Element)
