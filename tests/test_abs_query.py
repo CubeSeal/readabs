@@ -1,34 +1,16 @@
 from pathlib import Path
-from typing import List
 
 import pandas as pd
 import xml.etree.ElementTree as ET
-import requests as req
 import pytest_mock as mock
 
 import pytest
 import readabs.abs_query as module
 
-ABS_URL: str = "https://ausstats.abs.gov.au/servlet/TSSearchServlet?"
 EXAMPLE_CAT_NO: str = "6401.0"
 EXAMPLE_TABLE: str = "TABLES 1 and 2."
 RES_PATH: Path = Path(__file__).parent / 'res' / 'sample_timeseries_dict.xml'
 XML_TEXT: ET.Element = ET.fromstring(RES_PATH.read_text())
-
-def test_get_data():
-    response: req.models.Response = req.get(ABS_URL)
-
-    assert response is not None
-
-def test_get_data_type():
-    response: req.models.Response = req.get(ABS_URL)
-
-    assert isinstance(response, req.models.Response)
-
-def test_abs_conn_status():
-    response: req.models.Response = req.get(ABS_URL)
-
-    assert response.status_code == 200
 
 def test_abs_query_exists():
     
