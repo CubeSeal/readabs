@@ -53,6 +53,7 @@ class ABSQuery:
         get_table_names(): Get the list of available tables in the series list.
         get_table_links(): Get the download link for a given table name.
         get_dataframe(): Searched for table name and downloads matching dataframes.
+        get_first_dataframe(): Simple wrapper that gets the first dataframe from get_dataframe().
 
     Typical usage example:
         # Create ABSQuery object with either Catalogue No. or Series ID. 
@@ -67,7 +68,7 @@ class ABSQuery:
         print(table_links)
 
         # Download dataframes
-        data: dict[str, pd.DataFrame] = query.get_dataframe("TABLES 1 and 2.")
+        data: pd.DataFrame = query.get_first_dataframe("TABLES 1 and 2.")
     """
     _base_query: str = r"https://abs.gov.au:443/servlet/TSSearchServlet\?"
 
@@ -248,6 +249,23 @@ class ABSQuery:
             return_dict[name] = self._process_dataframes(response)
 
         return return_dict
+
+    def get_first_dataframe(self: ABSQuery, table_str: str) -> pd.DataFrame:
+        """
+        Simple wrapper that gets the first dataframe from get_dataframe().
+
+        Args:
+            table_str: string to search self.table_info for.
+
+        Returns:
+            A dictionary of table names and pandas DataFrames that matched the search.
+        """
+        try:
+            first_df: pd.DataFrame = self.get_dataframe(table_str).popitem()[1]
+        except KeyError:
+            raise ABSQueryError("No dataframes found for table_str.")
+
+        return first_df
 
     @classmethod
     def _process_dataframes(cls: Type[ABSQuery], response: bytes) -> pd.DataFrame:

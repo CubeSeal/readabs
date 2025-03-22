@@ -80,16 +80,42 @@ def test_get_table_links(mocker: mock.MockerFixture):
     assert isinstance(table_links, dict)
     assert table_links # Zero length test
 
-def test_get_dataframe():
-    abs_query: module.ABSQuery = module.ABSQuery(EXAMPLE_CAT_NO)
+def test_get_dataframe(mocker: mock.MockerFixture):
+    mock_response = XML_TEXT
 
+    abs_query: module.ABSQuery = module.ABSQuery(EXAMPLE_CAT_NO)
+    mocker.patch.object(abs_query, attribute='_get_timeseries_dict_xml', return_value = mock_response)
     test_dfs: dict[str, pd.DataFrame] = abs_query.get_dataframe(EXAMPLE_TABLE)
 
     assert len(test_dfs) != 0 
 
-def test_get_dataframe_fup():
+def test_get_dataframe_fup(mocker: mock.MockerFixture):
+    mock_response = XML_TEXT
+
     abs_query: module.ABSQuery = module.ABSQuery(EXAMPLE_CAT_NO)
+    mocker.patch.object(abs_query, attribute='_get_timeseries_dict_xml', return_value = mock_response)
 
     test_dfs: dict[str, pd.DataFrame] = abs_query.get_dataframe("This isn't a table.")
 
+    # Gets an empty dictionary in case of no match.
     assert len(test_dfs) == 0 
+
+def test_get_first_dataframe(mocker: mock.MockerFixture):
+    mock_response = XML_TEXT
+
+    abs_query: module.ABSQuery = module.ABSQuery(EXAMPLE_CAT_NO)
+    mocker.patch.object(abs_query, attribute='_get_timeseries_dict_xml', return_value = mock_response)
+
+    test_df: pd.DataFrame = abs_query.get_first_dataframe(EXAMPLE_TABLE)
+
+    assert len(test_df) != 0 
+
+def test_get_first_dataframe_fup(mocker: mock.MockerFixture):
+    mock_response = XML_TEXT
+
+    abs_query: module.ABSQuery = module.ABSQuery(EXAMPLE_CAT_NO)
+    mocker.patch.object(abs_query, attribute='_get_timeseries_dict_xml', return_value = mock_response)
+
+    # Raises an exception if empty dictionary.
+    with pytest.raises(module.ABSQueryError):
+        abs_query.get_first_dataframe("This isn't a table.")
