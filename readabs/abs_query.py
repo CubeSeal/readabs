@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import NewType, Type
 from io import BytesIO
+from functools import reduce
 
 import openpyxl as xlsx
 import pandas as pd
@@ -278,7 +279,7 @@ class ABSQuery:
             [pd.read_excel(workbook_bytes, sheet_name = s) for s in workbook.sheetnames if 'Data' in s]
         remove_headers: list[pd.DataFrame] = [cls._format_ABS_df(df) for df in df_list]
 
-        return pd.concat(remove_headers, axis = 1)
+        return reduce(lambda x, y: pd.merge(x, y, on = 'Date'), remove_headers)
 
     @classmethod
     def _format_ABS_df(cls: Type[ABSQuery], df: pd.DataFrame) -> pd.DataFrame:
