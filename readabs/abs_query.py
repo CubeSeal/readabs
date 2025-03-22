@@ -144,9 +144,8 @@ class ABSQuery:
 
         xml_query: str = self._construct_query()
         response: str = asyncio.run(conn.get_one(xml_query))
-
         pg_1: ABSXML = ABSXML(ET.fromstring(response))
-        return_element: ET.Element = pg_1
+        return_element: ABSXML = pg_1
 
         # TODO: See if there is a better way to do this.
         num_pages_elem: ET.Element | None = pg_1.find('NumPages')
@@ -247,18 +246,22 @@ class ABSQuery:
             print(f"Getting data for table: {name}")
 
             response: bytes = asyncio.run(conn.get_one_bytes(url))
-            workbook_bytes: BytesIO = BytesIO(response)
-            workbook: xlsx.Workbook = xlsx.load_workbook(workbook_bytes)
-
-            # Format and combine since ABS Excel workbooks usually come with multiple sheets of data.
-            df_list: list[pd.DataFrame] = \
-                [pd.read_excel(workbook_bytes, sheet_name = s) for s in workbook.sheetnames if 'Data' in s]
-            remove_headers: list[pd.DataFrame] = [self._format_ABS_df(df) for df in df_list]
-            final_dataframe = pd.concat(remove_headers, axis = 1)
-
-            return_dict[name] = final_dataframe
+            return_dict[name] = self._process_dataframes(response)
 
         return return_dict
+
+    @classmethod
+    def _process_dataframes(cls: Type[ABSQuery], response: bytes) -> pd.DataFrame:
+        """Converts bytes to final dataframe. Has to do concatenation for multiple sheets."""
+        workbook_bytes: BytesIO = BytesIO(response)
+        workbook: xlsx.Workbook = xlsx.load_workbook(workbook_bytes)
+
+        # Format and combine since ABS Excel workbooks usually come with multiple sheets of data.
+        df_list: list[pd.DataFrame] = \
+            [pd.read_excel(workbook_bytes, sheet_name = s) for s in workbook.sheetnames if 'Data' in s]
+        remove_headers: list[pd.DataFrame] = [cls._format_ABS_df(df) for df in df_list]
+
+        return pd.concat(remove_headers, axis = 1)
 
     @classmethod
     def _format_ABS_df(cls: Type[ABSQuery], df: pd.DataFrame) -> pd.DataFrame:
