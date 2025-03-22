@@ -144,11 +144,10 @@ class ABSQuery:
 
         xml_query: str = self._construct_query()
         response: str = asyncio.run(conn.get_one(xml_query))
-        pg_1: ABSXML = ABSXML(ET.fromstring(response))
-        return_element: ABSXML = pg_1
+        return_element: ABSXML = ABSXML(ET.fromstring(response))
 
         # TODO: See if there is a better way to do this.
-        num_pages_elem: ET.Element | None = pg_1.find('NumPages')
+        num_pages_elem: ET.Element | None = return_element.find('NumPages')
         num_pages: str | None = num_pages_elem.text if num_pages_elem is not None else None
         num_pages_int: int | None = int(num_pages) if num_pages is not None else None
 
