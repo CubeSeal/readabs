@@ -57,15 +57,15 @@ def test_timeseries_dict_xml(mocker: mock.MockerFixture):
 
     assert isinstance(abs_query._get_timeseries_dict_xml(), ET.Element)
 
-def test_xml_return(mocker: mock.MockerFixture):
-    """FIXME: Add alternate file for this function, because right now this tests fucking nothing."""
-    mock_response = XML_TEXT
-
-    abs_query: module.ABSQuery = module.ABSQuery(EXAMPLE_CAT_NO)
-    mocker.patch.object(abs_query, attribute='_get_timeseries_dict_xml', return_value = mock_response)
-    error_str: str = '<?xml version="1.0" encoding="utf-8" ?><Error>Invalid query.</Error>\r\n'
-
-    assert abs_query._get_timeseries_dict_xml().__str__ != error_str 
+# def test_xml_return(mocker: mock.MockerFixture):
+#     """FIXME: Add alternate file for this function, because right now this tests fucking nothing."""
+#     mock_response = XML_TEXT
+# 
+#     abs_query: module.ABSQuery = module.ABSQuery(EXAMPLE_CAT_NO)
+#     mocker.patch.object(abs_query, attribute='_get_timeseries_dict_xml', return_value = mock_response)
+#     error_str: str = '<?xml version="1.0" encoding="utf-8" ?><Error>Invalid query.</Error>\r\n'
+# 
+#     assert abs_query._get_timeseries_dict_xml().__str__ != error_str 
 
 def test_get_serieslist(mocker: mock.MockerFixture):
     mock_response = XML_TEXT

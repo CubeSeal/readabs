@@ -5,7 +5,6 @@ from io import BytesIO
 import openpyxl as xlsx
 import pandas as pd
 import xml.etree.ElementTree as ET
-import requests as req
 
 import re
 import datetime
@@ -144,7 +143,7 @@ class ABSQuery:
         """
 
         xml_query: str = self._construct_query()
-        response: str = asyncio.run(conn.get_element(xml_query))
+        response: str = asyncio.run(conn.get_one(xml_query))
 
         pg_1: ABSXML = ABSXML(ET.fromstring(response))
         return_element: ET.Element = pg_1
@@ -157,7 +156,7 @@ class ABSQuery:
         if isinstance(num_pages_int, int) and num_pages_int > 1:
             urls: list[str] = [self._construct_query(pg = i) for i in range(2, num_pages_int + 1)]
             
-            additional_pages: list[ET.Element] = [ET.fromstring(r) for r in asyncio.run(conn.get_elements(urls))]
+            additional_pages: list[ET.Element] = [ET.fromstring(r) for r in asyncio.run(conn.get_many(urls))]
             return_element.extend(additional_pages)
 
         return ABSXML(return_element)
@@ -247,7 +246,8 @@ class ABSQuery:
         for name, url in table_links.items():
             print(f"Getting data for table: {name}")
 
-            workbook_bytes: BytesIO = BytesIO(req.get(url).content)
+            response: bytes = asyncio.run(conn.get_one_bytes(url))
+            workbook_bytes: BytesIO = BytesIO(response)
             workbook: xlsx.Workbook = xlsx.load_workbook(workbook_bytes)
 
             # Format and combine since ABS Excel workbooks usually come with multiple sheets of data.
