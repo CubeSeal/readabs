@@ -231,13 +231,13 @@ class ABSQuery:
     def get_dataframe(self: ABSQuery, table_str: str) -> dict[str, pd.DataFrame]:
         """
         Downloads pandas dataframe by searching for table_str.
-        *Note: Can return empty dictionary if there's no match.
 
         Args:
             table_str: string to search self.table_info for.
 
         Returns:
             A dictionary of table names and pandas DataFrames that matched the search.
+            *Note: Can return empty dictionary if there's no match.
         """
         table_links: dict[str, str] = self.get_table_links(table_str)
 
