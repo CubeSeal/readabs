@@ -109,6 +109,25 @@ class ABSQuery:
 
         else:
             raise ABSQueryError("Either catno or seriesID must be provided")
+    
+    def __repr__(self: ABSQuery) -> str:
+        """
+        Detailed string representation of class.
+        """
+
+        def trunc_str(o: object) -> str:
+            print_str: str = o.__str__()
+            trunc_length: int = 100
+
+            return print_str[:trunc_length] + '...' if len(print_str) > trunc_length else print_str
+
+        return(
+            f"ABSQuery Object:\n"
+            f"Catalogue No.: {self.id.catno if isinstance(self.id, CatNo) else None}\n"
+            f"Series ID: {self.id.series_id if isinstance(self.id, SeriesID) else None}\n"
+            f"Series List: {trunc_str(self.series_list) if self.series_list is not None else None}\n"
+            f"Table Info: {trunc_str(self.table_info) if self.table_info is not None else None}\n"
+        ) 
 
     def _construct_query(self: ABSQuery, pg: int | None = None) -> str:
         """
@@ -161,7 +180,7 @@ class ABSQuery:
 
         return ABSXML(return_element)
 
-    def _get_serieslist(self: ABSQuery) -> None:
+    def _get_serieslist(self: ABSQuery) -> list[ABSSeries]:
         """
         Gets list of dictionaries, each representing one series in the Timeseries Dictionary. Include all parameters
         available in the xml dynamically. (TODO: Maybe statically enforce this?). Modifies self.series_list directly.
@@ -188,15 +207,26 @@ class ABSQuery:
 
             self.series_list = series_list
 
-    def _set_table_info(self: ABSQuery) -> None:
+        return self.series_list
+
+    def _get_table_info(self: ABSQuery) -> dict[str, str]:
         """
         Calls ._get_serieslist and sets table info based on the .series_list property. 
-        """
-        self._get_serieslist()
 
-        if series_list := self.series_list:
-            if not self.table_info:
-                self.table_info = {elem['TableTitle']: elem['TableURL'] for elem in series_list}
+        Raises:
+            ABSQueryError: If .series_list is not set properly. Since it is a must have dependency.
+        """
+        series_list: list[ABSSeries] = self._get_serieslist()
+
+        if series_list != [] and self.table_info is None:
+            self.table_info = {elem['TableTitle']: elem['TableURL'] for elem in series_list}
+            return self.table_info
+
+        elif self.table_info is not None:
+            return self.table_info
+
+        else:
+            raise ABSQueryError("._get_serieslist() did not set .series_list properly.")
 
     def get_table_names(self: ABSQuery) -> set[str] | None:
         """
@@ -205,9 +235,9 @@ class ABSQuery:
         Returns:
             A set with all unique table names available in the Timeseries Dictionary for the given ABSQuery parameters.
         """
-        self._get_serieslist()
-
-        return set([elem['TableTitle'] for elem in series_list]) if (series_list := self.series_list) else None
+        table_info: dict[str, str] = self._get_table_info()
+        
+        return set(table_info.keys()) if table_info else None
 
     def get_table_links(self: ABSQuery, table_title: str) -> dict[str, str]:
         """
@@ -221,9 +251,9 @@ class ABSQuery:
         Returns:
             A dictionary of TableTitle's and TableURL's.
         """
-        self._set_table_info()
+        table_info: dict[str, str] = self._get_table_info()
 
-        if (table_info := self.table_info):
+        if table_info:
             return {k:v for k, v in table_info.items() if table_title in k}
         else:
             raise ABSQueryError("._self_table_info() did not set .table_info properly.")
