@@ -1,8 +1,8 @@
-[tool.poetry]
+[project]
 name = "readabs"
 version = "0.1.0"
 description = "Clone of R package."
-authors = ["landseal <kenndesilva1@gmail.com>"]
+authors = [{ name = "landseal", email = "<kenndesilva1@gmail.com>"}]
 license = "MIT"
 readme = "README.md"
 
