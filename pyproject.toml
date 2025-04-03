@@ -6,6 +6,10 @@ authors = [{ name = "landseal", email = "<kenndesilva1@gmail.com>"}]
 license = "MIT"
 readme = "README.md"
 
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+
 [tool.poetry.dependencies]
 python = "^3.12"
 openpyxl = "^3.1.5"
