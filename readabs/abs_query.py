@@ -77,7 +77,8 @@ class ABSQuery:
         self: ABSQuery,
         catno: str | None = None,
         seriesID: str | None = None,
-        table_title: str | None = None
+        table_title: str | None = None,
+        getter: conn.HTTPGetter = conn.AsyncGetter
     ) -> None:
         """
         ABSQuery constructor.
@@ -91,6 +92,7 @@ class ABSQuery:
         """
         self.id: CatNo | SeriesID
         self.table_title: str | None = table_title
+        self.getter: conn.HTTPGetter = getter
         # Not set in __init__, but in _get_serieslist() because expensive.
         self.series_list: list[ABSSeries] | None = None
         # Not set in __init__, but in get_table_links() because it depends on above.
@@ -164,19 +166,20 @@ class ABSQuery:
         """
 
         xml_query: str = self._construct_query()
-        response: str = asyncio.run(conn.get_one(xml_query))
+        response: str = self.getter.get_one(xml_query)
         return_element: ABSXML = ABSXML(ET.fromstring(response))
 
-        # TODO: See if there is a better way to do this.
-        num_pages_elem: ET.Element | None = return_element.find('NumPages')
-        num_pages: str | None = num_pages_elem.text if num_pages_elem is not None else None
-        num_pages_int: int | None = int(num_pages) if num_pages is not None else None
+        # Handle additional pages.
+        if num_pages_elem := return_element.find('NumPages'):
+            if num_pages_str := num_pages_elem.text:
+                num_pages_int: int = int(num_pages_str)
 
-        if isinstance(num_pages_int, int) and num_pages_int > 1:
-            urls: list[str] = [self._construct_query(pg = i) for i in range(2, num_pages_int + 1)]
-            
-            additional_pages: list[ET.Element] = [ET.fromstring(r) for r in asyncio.run(conn.get_many(urls))]
-            return_element.extend(additional_pages)
+                if isinstance(num_pages_int, int) and num_pages_int > 1:
+                    urls: list[str] = [self._construct_query(pg = i) for i in range(2, num_pages_int + 1)]
+                    response_many: list[str] = self.getter.get_many(urls)
+                    
+                    additional_pages: list[ET.Element] = [ET.fromstring(r) for r in response_many]
+                    return_element.extend(additional_pages)
 
         return ABSXML(return_element)
 
