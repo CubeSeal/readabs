@@ -16,7 +16,7 @@ openpyxl = "^3.1.5"
 aiohttp = "^3.11.14"
 asyncio = "^3.4.3"
 nest-asyncio = "^1.6.0"
-
+pandas = "^2.2.3"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^8.3.4"
