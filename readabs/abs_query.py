@@ -326,7 +326,11 @@ class ABSQuery:
     @staticmethod
     def _rename_cols(df: pd.DataFrame) -> pd.DataFrame:
         """Renames the weird auto-name for the data column"""
-        return df.rename({"Unnamed: 0": "Date"}, axis = 1)
+        return (
+            df
+            .rename({"Unnamed: 0": "Date"}, axis = 1)
+            .rename(lambda x: re.sub(' {2,}', ' ', x), axis = 'columns')
+        )
 
     @staticmethod
     def _remove_ABS_headers(df: pd.DataFrame) -> pd.DataFrame:
