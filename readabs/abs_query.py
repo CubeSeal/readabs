@@ -170,7 +170,7 @@ class ABSQuery:
         return_element: ABSXML = ABSXML(ET.fromstring(response))
 
         # Handle additional pages.
-        if num_pages_elem := return_element.find('NumPages'):
+        if (num_pages_elem := return_element.find('NumPages')) is not None:
             if num_pages_str := num_pages_elem.text:
                 num_pages_int: int = int(num_pages_str)
 
