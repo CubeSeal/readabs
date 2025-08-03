@@ -2,28 +2,33 @@
 name = "readabs"
 version = "0.1.0"
 description = "Clone of R package."
-authors = [{ name = "landseal", email = "<kenndesilva1@gmail.com>"}]
-license = "MIT"
+authors = [{ name = "landseal", email = "<kenndesilva1@gmail.com>" }]
+requires-python = "~=3.12"
 readme = "README.md"
+license = "MIT"
+dependencies = [
+    "openpyxl>=3.1.5,<4",
+    "aiohttp>=3.11.14,<4",
+    "asyncio>=3.4.3,<4",
+    "nest-asyncio>=1.6.0,<2",
+    "pandas>=2.2.3,<3",
+]
+
+[dependency-groups]
+test = [
+    "pytest>=8.3.4,<9",
+    "pytest-mock>=3.14.0,<4",
+    "xmltodict>=0.14.2,<0.15",
+    "pytest-xdist>=3.6.1,<4",
+]
 
 [tool.pyright]
 venvPath = "."
 venv = ".venv"
 
-[tool.poetry.dependencies]
-python = "^3.12"
-openpyxl = "^3.1.5"
-aiohttp = "^3.11.14"
-asyncio = "^3.4.3"
-nest-asyncio = "^1.6.0"
-pandas = "^2.2.3"
-
-[tool.poetry.group.test.dependencies]
-pytest = "^8.3.4"
-pytest-mock = "^3.14.0"
-xmltodict = "^0.14.2"
-pytest-xdist = "^3.6.1"
+[tool.uv]
+default-groups = ["test"]
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
